@@ -396,22 +396,78 @@
             updateActiveUsers();
         }
 
-        // Send click data to server
+        // Send click data to local controller
         function sendClick(x, y, clickType) {
             const clickData = {
                 type: 'click',
-                x: Math.round(x * 1000) / 1000, // Round to 3 decimal places
+                x: Math.round(x * 1000) / 1000,
                 y: Math.round(y * 1000) / 1000,
                 clickType: clickType,
                 timestamp: Date.now(),
-                userId: 'user_' + Math.random().toString(36).substr(2, 9)
+                userId: 'viewer_' + Math.random().toString(36).substr(2, 9)
             };
 
             if (websocket && websocket.readyState === WebSocket.OPEN) {
+                // Direct WebSocket method
                 websocket.send(JSON.stringify(clickData));
             } else {
-                // For demo purposes, log the click data
-                console.log('Click data (would be sent to server):', clickData);
+                // Broadcast method for hosted version
+                localStorage.setItem('pending_click', JSON.stringify(clickData));
+                localStorage.removeItem('pending_click'); // Trigger storage event
+                
+                // Also use BroadcastChannel if available
+                if (window.BroadcastChannel) {
+                    const channel = new BroadcastChannel('runescape_clicks');
+                    channel.postMessage(clickData);
+                }
+                
+                logMessage(`Click sent: (${Math.round(x*100)}%, ${Math.round(y*100)}%)`);
+            }
+        }
+
+        function updateControllerStatus() {
+            const statusIndicator = document.querySelector('.controller-status') || createControllerStatusIndicator();
+            if (controllerConnected) {
+                statusIndicator.innerHTML = '<div class="status-dot connected"></div><span>Controller Connected</span>';
+            } else {
+                statusIndicator.innerHTML = '<div class="status-dot disconnected"></div><span>Controller Offline</span>';
+            }
+        }
+
+        function createControllerStatusIndicator() {
+            const indicator = document.createElement('div');
+            indicator.className = 'status controller-status';
+            indicator.style.marginBottom = '10px';
+            
+            const controlPanel = document.querySelector('.control-panel');
+            controlPanel.insertBefore(indicator, controlPanel.firstChild.nextSibling);
+            
+            return indicator;
+        }
+
+        // Handle messages from server
+        function handleServerMessage(data) {
+            switch (data.type) {
+                case 'connected':
+                    logMessage('Successfully connected with ID: ' + data.clientId);
+                    break;
+                    
+                case 'clickPerformed':
+                    // Update total clicks from server
+                    document.getElementById('clickCount').textContent = data.totalClicks;
+                    break;
+                    
+                case 'error':
+                    logMessage('Server error: ' + data.message);
+                    break;
+                    
+                case 'serverShutdown':
+                    logMessage('Server is shutting down');
+                    disconnect();
+                    break;
+                    
+                default:
+                    console.log('Unknown server message:', data);
             }
         }
 
