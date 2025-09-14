@@ -1,0 +1,23 @@
+{
+  "name": "runescape-mouse-controller",
+  "version": "1.0.0",
+  "description": "Local mouse controller for RuneScape Twitch integration",
+  "main": "mouse-controller.js",
+  "scripts": {
+    "start": "node mouse-controller.js",
+    "install-deps": "npm install"
+  },
+  "dependencies": {
+    "ws": "^8.14.2",
+    "robotjs": "^0.6.0"
+  },
+  "keywords": [
+    "runescape",
+    "twitch",
+    "mouse",
+    "automation",
+    "controller"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}
