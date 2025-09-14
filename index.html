@@ -355,33 +355,60 @@
         }
 
         function connect() {
-            // In a real implementation, this would connect to your WebSocket server
-            // For demo purposes, we'll simulate the connection
+    try {
+        document.getElementById('connectBtn').disabled = true;
+        document.getElementById('connectBtn').textContent = 'Connecting...';
+        
+        // Connect to your Heroku relay server
+        websocket = new WebSocket('wss://osrs-186b1608326c.herokuapp.com');
+        
+        websocket.onopen = function(event) {
+            isConnected = true;
+            updateConnectionStatus();
+            logMessage('Connected to RuneScape relay server');
             
+            // Identify as website/viewer connection
+            websocket.send(JSON.stringify({
+                type: 'website_connect',
+                userId: 'viewer_' + Math.random().toString(36).substr(2, 9),
+                timestamp: Date.now()
+            }));
+        };
+        
+        websocket.onmessage = function(event) {
             try {
-                // Simulated WebSocket connection
-                // websocket = new WebSocket('ws://localhost:8080');
-                
-                // Simulate successful connection
-                setTimeout(() => {
-                    isConnected = true;
-                    updateConnectionStatus();
-                    logMessage('Connected to RuneScape control server');
-                    
-                    // Simulate some active users
-                    activeUsers.add('User1');
-                    activeUsers.add('User2');
-                    updateActiveUsers();
-                }, 1000);
-                
-                document.getElementById('connectBtn').disabled = true;
-                document.getElementById('connectBtn').textContent = 'Connecting...';
-                
+                const data = JSON.parse(event.data);
+                handleServerMessage(data);
             } catch (error) {
-                console.error('Connection failed:', error);
-                logMessage('Connection failed: ' + error.message);
+                console.error('Error parsing server message:', error);
             }
-        }
+        };
+        
+        websocket.onerror = function(error) {
+            console.error('WebSocket error:', error);
+            logMessage('Connection error - make sure the game controller is running');
+            isConnected = false;
+            updateConnectionStatus();
+            document.getElementById('connectBtn').disabled = false;
+            document.getElementById('connectBtn').textContent = 'Connect';
+        };
+        
+        websocket.onclose = function(event) {
+            isConnected = false;
+            updateConnectionStatus();
+            logMessage('Disconnected from relay server');
+            websocket = null;
+            document.getElementById('connectBtn').disabled = false;
+            document.getElementById('connectBtn').textContent = 'Connect';
+        };
+        
+    } catch (error) {
+        console.error('Connection failed:', error);
+        logMessage('Connection failed: ' + error.message);
+        document.getElementById('connectBtn').disabled = false;
+        document.getElementById('connectBtn').textContent = 'Connect';
+    }
+}
 
         function disconnect() {
             if (websocket) {
