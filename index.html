@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive RuneScape Stream Control</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .stream-container {
+            position: relative;
+            background: rgba(0,0,0,0.8);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .twitch-embed {
+            width: 100%;
+            height: 500px;
+            border: none;
+            border-radius: 10px;
+            background: #000;
+        }
+
+        .click-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            bottom: 20px;
+            border-radius: 10px;
+            cursor: crosshair;
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(1px);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 10;
+        }
+
+        .click-overlay:hover {
+            opacity: 1;
+            background: rgba(255,255,255,0.1);
+        }
+
+        .click-indicator {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #ff4757;
+            border-radius: 50%;
+            background: rgba(255,71,87,0.3);
+            transform: translate(-50%, -50%);
+            animation: clickPulse 0.6s ease-out;
+            pointer-events: none;
+        }
+
+        @keyframes clickPulse {
+            0% {
+                transform: translate(-50%, -50%) scale(0.5);
+                opacity: 1;
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(2);
+                opacity: 0;
+            }
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .control-panel {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .control-panel h3 {
+            margin-bottom: 15px;
+            color: #ffd700;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        .status-dot.connected {
+            background: #2ed573;
+            box-shadow: 0 0 10px #2ed573;
+        }
+
+        .status-dot.disconnected {
+            background: #ff4757;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            border: none;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .click-log {
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            padding: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+
+        .click-log div {
+            margin-bottom: 5px;
+            padding: 3px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .settings {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .setting-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .setting-group label {
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+        }
+
+        .setting-group input, .setting-group select {
+            padding: 8px;
+            border: none;
+            border-radius: 5px;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            backdrop-filter: blur(10px);
+        }
+
+        .setting-group input::placeholder {
+            color: rgba(255,255,255,0.6);
+        }
+
+        @media (max-width: 768px) {
+            .controls {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .twitch-embed {
+                height: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎮 Interactive RuneScape Stream</h1>
+            <p>Click on the stream to control the game! Your clicks are sent to the streamer's screen.</p>
+        </div>
+
+        <div class="stream-container">
+            <iframe 
+                class="twitch-embed"
+                src="https://player.twitch.tv/?channel=YOUR_CHANNEL_NAME&parent=localhost&parent=your-domain.com"
+                allowfullscreen>
+            </iframe>
+            <div class="click-overlay" id="clickOverlay"></div>
+        </div>
+
+        <div class="controls">
+            <div class="control-panel">
+                <h3>🔧 Stream Control</h3>
+                <div class="status">
+                    <div class="status-dot" id="connectionStatus"></div>
+                    <span id="statusText">Disconnected</span>
+                </div>
+                <button class="btn" id="connectBtn" onclick="toggleConnection()">Connect</button>
+                <button class="btn" id="clearLogBtn" onclick="clearClickLog()">Clear Log</button>
+                
+                <div class="settings">
+                    <div class="setting-group">
+                        <label>Your Twitch Channel:</label>
+                        <input type="text" id="channelInput" placeholder="your_channel_name" value="YOUR_CHANNEL_NAME">
+                    </div>
+                    <div class="setting-group">
+                        <label>Click Mode:</label>
+                        <select id="clickMode">
+                            <option value="single">Single Click</option>
+                            <option value="double">Double Click</option>
+                            <option value="right">Right Click</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <h3>📊 Click Activity</h3>
+                <div class="status">
+                    <span>Total Clicks: <strong id="clickCount">0</strong></span>
+                </div>
+                <div class="status">
+                    <span>Active Users: <strong id="activeUsers">0</strong></span>
+                </div>
+                <div class="click-log" id="clickLog">
+                    <div style="color: #888;">Click activity will appear here...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let isConnected = false;
+        let websocket = null;
+        let clickCount = 0;
+        let activeUsers = new Set();
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            setupClickOverlay();
+            updateChannelEmbed();
+            
+            // Update embed when channel changes
+            document.getElementById('channelInput').addEventListener('change', updateChannelEmbed);
+        });
+
+        // Setup click overlay functionality
+        function setupClickOverlay() {
+            const overlay = document.getElementById('clickOverlay');
+            
+            overlay.addEventListener('click', function(e) {
+                if (!isConnected) {
+                    alert('Please connect first to start controlling the game!');
+                    return;
+                }
+
+                const rect = overlay.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                // Calculate relative position (0-1)
+                const relativeX = x / rect.width;
+                const relativeY = y / rect.height;
+                
+                // Create click indicator
+                createClickIndicator(x, y);
+                
+                // Send click data
+                sendClick(relativeX, relativeY, document.getElementById('clickMode').value);
+                
+                // Update UI
+                updateClickCount();
+                logClick(relativeX, relativeY);
+            });
+        }
+
+        // Create visual click indicator
+        function createClickIndicator(x, y) {
+            const indicator = document.createElement('div');
+            indicator.className = 'click-indicator';
+            indicator.style.left = x + 'px';
+            indicator.style.top = y + 'px';
+            
+            document.getElementById('clickOverlay').appendChild(indicator);
+            
+            // Remove after animation
+            setTimeout(() => {
+                if (indicator.parentNode) {
+                    indicator.parentNode.removeChild(indicator);
+                }
+            }, 600);
+        }
+
+        // WebSocket connection management
+        function toggleConnection() {
+            if (isConnected) {
+                disconnect();
+            } else {
+                connect();
+            }
+        }
+
+        function connect() {
+            // In a real implementation, this would connect to your WebSocket server
+            // For demo purposes, we'll simulate the connection
+            
+            try {
+                // Simulated WebSocket connection
+                // websocket = new WebSocket('ws://localhost:8080');
+                
+                // Simulate successful connection
+                setTimeout(() => {
+                    isConnected = true;
+                    updateConnectionStatus();
+                    logMessage('Connected to RuneScape control server');
+                    
+                    // Simulate some active users
+                    activeUsers.add('User1');
+                    activeUsers.add('User2');
+                    updateActiveUsers();
+                }, 1000);
+                
+                document.getElementById('connectBtn').disabled = true;
+                document.getElementById('connectBtn').textContent = 'Connecting...';
+                
+            } catch (error) {
+                console.error('Connection failed:', error);
+                logMessage('Connection failed: ' + error.message);
+            }
+        }
+
+        function disconnect() {
+            if (websocket) {
+                websocket.close();
+                websocket = null;
+            }
+            
+            isConnected = false;
+            updateConnectionStatus();
+            logMessage('Disconnected from server');
+            activeUsers.clear();
+            updateActiveUsers();
+        }
+
+        // Send click data to server
+        function sendClick(x, y, clickType) {
+            const clickData = {
+                type: 'click',
+                x: Math.round(x * 1000) / 1000, // Round to 3 decimal places
+                y: Math.round(y * 1000) / 1000,
+                clickType: clickType,
+                timestamp: Date.now(),
+                userId: 'user_' + Math.random().toString(36).substr(2, 9)
+            };
+
+            if (websocket && websocket.readyState === WebSocket.OPEN) {
+                websocket.send(JSON.stringify(clickData));
+            } else {
+                // For demo purposes, log the click data
+                console.log('Click data (would be sent to server):', clickData);
+            }
+        }
+
+        // Update UI functions
+        function updateConnectionStatus() {
+            const statusDot = document.getElementById('connectionStatus');
+            const statusText = document.getElementById('statusText');
+            const connectBtn = document.getElementById('connectBtn');
+            
+            if (isConnected) {
+                statusDot.className = 'status-dot connected';
+                statusText.textContent = 'Connected';
+                connectBtn.textContent = 'Disconnect';
+                connectBtn.disabled = false;
+            } else {
+                statusDot.className = 'status-dot disconnected';
+                statusText.textContent = 'Disconnected';
+                connectBtn.textContent = 'Connect';
+                connectBtn.disabled = false;
+            }
+        }
+
+        function updateClickCount() {
+            clickCount++;
+            document.getElementById('clickCount').textContent = clickCount;
+        }
+
+        function updateActiveUsers() {
+            document.getElementById('activeUsers').textContent = activeUsers.size;
+        }
+
+        function updateChannelEmbed() {
+            const channel = document.getElementById('channelInput').value;
+            const iframe = document.querySelector('.twitch-embed');
+            
+            if (channel) {
+                iframe.src = `https://player.twitch.tv/?channel=${channel}&parent=localhost&parent=your-domain.com`;
+            }
+        }
+
+        function logClick(x, y) {
+            const log = document.getElementById('clickLog');
+            const time = new Date().toLocaleTimeString();
+            const clickType = document.getElementById('clickMode').value;
+            
+            const entry = document.createElement('div');
+            entry.innerHTML = `<span style="color: #2ed573;">[${time}]</span> ${clickType} at (${Math.round(x*100)}%, ${Math.round(y*100)}%)`;
+            
+            log.insertBefore(entry, log.firstChild);
+            
+            // Keep only last 20 entries
+            while (log.children.length > 20) {
+                log.removeChild(log.lastChild);
+            }
+        }
+
+        function logMessage(message) {
+            const log = document.getElementById('clickLog');
+            const time = new Date().toLocaleTimeString();
+            
+            const entry = document.createElement('div');
+            entry.innerHTML = `<span style="color: #ffd700;">[${time}]</span> ${message}`;
+            entry.style.color = '#ffd700';
+            
+            log.insertBefore(entry, log.firstChild);
+        }
+
+        function clearClickLog() {
+            const log = document.getElementById('clickLog');
+            log.innerHTML = '<div style="color: #888;">Click activity cleared...</div>';
+            clickCount = 0;
+            document.getElementById('clickCount').textContent = '0';
+        }
+
+        // Simulate periodic user activity for demo
+        setInterval(() => {
+            if (isConnected && Math.random() < 0.3) {
+                const userCount = Math.floor(Math.random() * 5) + 1;
+                activeUsers.clear();
+                for (let i = 0; i < userCount; i++) {
+                    activeUsers.add(`Viewer${i + 1}`);
+                }
+                updateActiveUsers();
+            }
+        }, 5000);
+    </script>
+</body>
+</html>
