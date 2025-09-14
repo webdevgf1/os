@@ -85,6 +85,67 @@
             text-shadow: 1px 1px 3px rgba(0,0,0,0.6);
         }
 
+        .social-buttons {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    display: flex;
+    gap: 15px;
+    z-index: 1000;
+}
+
+.social-btn {
+    width: 50px;
+    height: 50px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    border: 2px solid rgba(255, 215, 0, 0.3);
+    text-decoration: none;
+}
+
+.social-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+    border-color: #ffd700;
+}
+
+.social-btn img {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+}
+
+.pump-btn {
+    background: linear-gradient(135deg, #8b6914 0%, #ffd700 100%);
+}
+
+.twitter-btn {
+    background: linear-gradient(135deg, #1da1f2 0%, #0d8bd9 100%);
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+    .social-buttons {
+        top: 15px;
+        right: 15px;
+        gap: 10px;
+    }
+    
+    .social-btn {
+        width: 45px;
+        height: 45px;
+    }
+    
+    .social-btn img {
+        width: 24px;
+        height: 24px;
+    }
+}
+
         .stream-container {
             position: relative;
             background: rgba(45, 24, 16, 0.9);
@@ -302,6 +363,14 @@
     </style>
 </head>
 <body>
+    <div class="social-buttons">
+    <a href="https://pump.fun" target="_blank" class="social-btn pump-btn" title="Visit Pump.fun">
+        <img src="https://cdn.prod.website-files.com/6740d85c4e3daeef29a89470/68c457abc0279df7fc3eb5a6_68c43c9ba4355c1b5e0d63da_68a663251731174a3dc255f1_689178ebf786d570b0c29520_tw%20(1)%20(1)%20(2).png" alt="Pump.fun">
+    </a>
+    <a href="https://twitter.com/yourusername" target="_blank" class="social-btn twitter-btn" title="Follow on Twitter">
+        <img src="https://cdn.prod.website-files.com/6740d85c4e3daeef29a89470/68a663251731174a3dc255f1_689178ebf786d570b0c29520_tw%20(1).png" alt="Twitter">
+    </a>
+</div>
     <div class="container">
         <div class="header">
             <h1>🏰 Control My RuneScape Adventure</h1>
